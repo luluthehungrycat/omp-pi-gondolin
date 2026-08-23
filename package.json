@@ -6,6 +6,9 @@
   "dependencies": {
     "@earendil-works/gondolin": "^0.4.0"
   },
+  "devDependencies": {
+    "@oh-my-pi/pi-coding-agent": "18.0.0"
+  },
   "pi": {
     "extensions": ["./index.ts"]
   }

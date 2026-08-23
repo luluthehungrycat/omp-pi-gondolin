@@ -21,7 +21,7 @@
 
 import path from "node:path";
 
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent/extensibility/extensions";
 import {
   type BashOperations,
   type EditOperations,
@@ -31,7 +31,7 @@ import {
   createEditTool,
   createReadTool,
   createWriteTool,
-} from "@mariozechner/pi-coding-agent";
+} from "@oh-my-pi/pi-coding-agent/extensibility/legacy-pi-coding-agent-shim";
 
 import { RealFSProvider, VM } from "@earendil-works/gondolin";
 
