@@ -13,12 +13,28 @@ Your working directory is mounted read-write at `/workspace` inside the VM. The 
   - Linux (aarch64): `sudo apt install qemu-system-arm`
 - Node.js 18+
 
-## Install
+## Install with OMP
 
-```sh
-git clone https://github.com/pasky/pi-gondolin
-cd pi-gondolin
-npm install
+Gondolin's OMP import port is currently blocked under Bun 1.4.0 by the `ssh2` native module (`unsupported uv function: uv_version_string`). Do not use it as a verified release yet.
+
+Once the native-loader blocker is resolved, configure GitHub Packages authentication:
+
+```bash
+npm config set @luluthehungrycat:registry https://npm.pkg.github.com
+npm config set //npm.pkg.github.com/:_authToken "$GITHUB_TOKEN"
+```
+
+Then install through OMP:
+
+```bash
+omp plugin install @luluthehungrycat/omp-pi-gondolin
+omp plugin doctor
+```
+
+Direct GitHub source installation is also supported:
+
+```bash
+omp plugin install git+ssh://git@github.com/luluthehungrycat/omp-pi-gondolin.git#v0.1.0
 ```
 
 ## Usage
