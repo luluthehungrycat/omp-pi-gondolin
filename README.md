@@ -17,6 +17,8 @@ Your working directory is mounted read-write at `/workspace` inside the VM. The 
 
 Gondolin's OMP import port is currently blocked under Bun 1.4.0 by the `ssh2` native module (`unsupported uv function: uv_version_string`). Do not use it as a verified release yet.
 
+The latest upstream Gondolin package tested (`0.12.0`) still depends on `ssh2 ^1.17.0` and reproduces the same abort while importing `@earendil-works/gondolin`. This is consistent with Bun's tracked POSIX libuv compatibility issue: [oven-sh/bun#18546](https://github.com/oven-sh/bun/issues/18546). No network bypass, unsandboxed fallback, or containment weakening is acceptable as a workaround.
+
 Once the native-loader blocker is resolved, configure GitHub Packages authentication:
 
 ```bash
