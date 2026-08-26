@@ -4,7 +4,7 @@
   "description": "Run pi's tools inside a Gondolin micro-VM sandbox",
   "license": "MIT",
   "dependencies": {
-    "@earendil-works/gondolin": "^0.4.0"
+    "@earendil-works/gondolin": "0.12.0"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

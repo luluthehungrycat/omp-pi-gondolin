@@ -15,11 +15,13 @@ Your working directory is mounted read-write at `/workspace` inside the VM. The 
 
 ## Install with OMP
 
-Gondolin's OMP import port is currently blocked under Bun 1.4.0 by the `ssh2` native module (`unsupported uv function: uv_version_string`). Do not use it as a verified release yet.
+The plugin uses the latest official Gondolin release, `0.12.0`, which depends on `ssh2 ^1.17.0`.
 
-The latest upstream Gondolin package tested (`0.12.0`) still depends on `ssh2 ^1.17.0` and reproduces the same abort while importing `@earendil-works/gondolin`. This is consistent with Bun's tracked POSIX libuv compatibility issue: [oven-sh/bun#18546](https://github.com/oven-sh/bun/issues/18546). No network bypass, unsandboxed fallback, or containment weakening is acceptable as a workaround.
+Stock Bun 1.4.0 still aborts while importing `ssh2` with `unsupported uv function: uv_version_string`. The OMP plugin has been verified with a locally source-built Bun from Bun PR #39652 (`1b93209a8a3ebead9ad8c56164d4358fc493a989`): plugin import and registration, Gondolin VM startup, contained `bash` execution, and shutdown all pass under QEMU TCG. This is an experimental compatibility baseline, not an official Bun release.
 
-Once the native-loader blocker is resolved, configure GitHub Packages authentication:
+Do not work around the stock-Bun blocker with a network bypass, unsandboxed fallback, or containment weakening. For normal Bun release support, track the upstream POSIX libuv compatibility work: [oven-sh/bun#18546](https://github.com/oven-sh/bun/issues/18546).
+
+Configure GitHub Packages authentication:
 
 ```bash
 npm config set @luluthehungrycat:registry https://npm.pkg.github.com
