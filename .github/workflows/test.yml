@@ -29,6 +29,9 @@ jobs:
         run: |
           bun -e 'const source = await Bun.file("index.ts").text(); new Bun.Transpiler({ loader: "tsx" }).transformSync(source);'
 
+      - name: Check Gondolin import under Bun
+        run: bun -e 'import { VM } from "@earendil-works/gondolin"; if (typeof VM !== "function") throw new Error("Gondolin VM export missing");'
+
       - name: Validate package metadata
         run: |
           bun -e 'const p = await Bun.file("package.json").json(); if (p.dependencies["@earendil-works/gondolin"] !== "0.12.0") throw new Error("unexpected Gondolin version"); if (p.omp.extensions[0] !== "./index.ts") throw new Error("unexpected OMP extension metadata");'

@@ -6,28 +6,26 @@ OMP-Pi-Gondolin runs OMP's tool calls (`bash`, `read`, `write`, `edit`, and `use
 
 ## Experimental warning
 
-This plugin is **experimental** and is **not compatible with an official stock Bun release yet**.
+This plugin is **experimental**. It now has a downstream compatibility patch for stock Bun 1.4.0, but it is not yet a normal stable Gondolin release or an upstream `ssh2` fix.
 
-The verified compatibility path currently requires a locally source-built Bun from Bun PR [#39652](https://github.com/oven-sh/bun/pull/39652), source commit:
+Gondolin 0.12.0 depends on `ssh2` 1.17.0. Its optional `sshcrypto.node` and `cpu-features` native modules call a libuv API that stock Bun 1.4.0 does not yet implement. This repository carries a Bun-specific dependency patch that skips those optional native accelerators under Bun and uses `ssh2`'s JavaScript crypto fallback instead.
+
+The tracked patch has been verified with stock Bun 1.4.0 for Gondolin import, VM startup, guest execution, OMP plugin import, `read`/`write`/`edit`/`bash`/`user_bash`, workspace synchronization, containment probes, and shutdown.
+
+The unpatched Gondolin dependency still requires the source-built Bun from Bun PR [#39652](https://github.com/oven-sh/bun/pull/39652), source commit:
 
 ```text
 1b93209a8a3ebead9ad8c56164d4358fc493a989
 ```
 
-Stock Bun 1.4.0 aborts while importing Gondolin's `ssh2` dependency:
+The source-built Bun remains useful as an independent compatibility baseline. It is **not an official Bun release**. Work to reduce or eliminate the Node.js/native dependency incompatibilities is underway, and the package remains experimental until the downstream patch receives broader validation or equivalent compatibility lands upstream.
 
-```text
-unsupported uv function: uv_version_string
-```
-
-Do not work around this limitation with a network bypass, unsandboxed fallback, or weakened containment. Work to reduce or eliminate the Node.js/native dependency incompatibilities is underway. The current plan is to investigate a Bun-compatible Gondolin dependency path first; if that is not viable, a Node.js helper-process boundary or an alternative SSH implementation may be evaluated. The legacy Pi compatibility shim remains in place until an alternative implementation is created and proven.
-
-Bun PR #39652 is **not an official Bun release**. This plugin must remain classified as experimental until equivalent compatibility is included in an official Bun release or the dependency path is independently made Bun-compatible.
+Do not work around dependency failures with a network bypass, unsandboxed fallback, or weakened containment. The legacy Pi compatibility shim remains in place until an alternate implementation has been created and proven.
 
 ## Requirements
 
-- OMP 18.x
-- A source-built Bun from Bun PR #39652 for the current verified path
+- OMP 18.x with Bun 1.4.0 or newer
+- The tracked `ssh2` compatibility patch from this repository
 - QEMU:
   - macOS: `brew install qemu`
   - Linux (x86_64): `sudo apt install qemu-system-x86`
@@ -75,9 +73,9 @@ omp plugin link /path/to/omp-pi-gondolin
 omp plugin doctor
 ```
 
-## Running OMP with the local PR-39652 Bun build
+## Optional independent PR-39652 Bun baseline
 
-OMP's launcher resolves `bun` through `PATH`, so the Bun runtime can be selected per invocation without replacing the global Bun installation.
+The downstream patch allows the current verified OMP path to run under stock Bun 1.4.0. A locally source-built Bun from Bun PR #39652 remains useful as an independent baseline when comparing against unpatched Gondolin or validating upstream Bun compatibility.
 
 If the source checkout was built in place and its debug binary is relocatable, create a user-local command name and launch OMP with a temporary PATH override:
 

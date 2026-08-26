@@ -1,7 +1,7 @@
 {
   "name": "@luluthehungrycat/omp-pi-gondolin",
   "version": "0.1.0",
-  "description": "Run pi's tools inside a Gondolin micro-VM sandbox",
+  "description": "Run OMP tools inside a Gondolin micro-VM sandbox",
   "license": "MIT",
   "dependencies": {
     "@earendil-works/gondolin": "0.12.0"
@@ -17,5 +17,8 @@
   },
   "omp": {
     "extensions": ["./index.ts"]
+  },
+  "patchedDependencies": {
+    "ssh2@1.17.0": "patches/ssh2@1.17.0.patch"
   }
 }
