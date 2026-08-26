@@ -31,8 +31,7 @@ jobs:
 
       - name: Validate package metadata
         run: |
-          test "$(bun -p 'require(\"./package.json\").dependencies[\"@earendil-works/gondolin\"]')" = '0.12.0'
-          test "$(bun -p 'require(\"./package.json\").omp.extensions[0]')" = './index.ts'
+          bun -e 'const p = await Bun.file("package.json").json(); if (p.dependencies["@earendil-works/gondolin"] !== "0.12.0") throw new Error("unexpected Gondolin version"); if (p.omp.extensions[0] !== "./index.ts") throw new Error("unexpected OMP extension metadata");'
 
       - name: Check whitespace
         run: git diff --check
