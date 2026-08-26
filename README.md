@@ -1,80 +1,188 @@
-# pi-gondolin
+# OMP-Pi-Gondolin
 
-A [pi coding agent](https://github.com/badlogic/pi-mono) extension that runs all tool calls (bash, read, write, edit) inside a [Gondolin](https://github.com/earendil-works/gondolin) micro-VM sandbox instead of directly on the host.
+> **Fork notice:** this repository is a downstream fork/port of the original [`pi-gondolin`](https://github.com/earendil-works/gondolin) plugin. It adapts the sandbox to the [Oh My Pi (OMP)](https://github.com/luluthehungrycat/omp) extension API while retaining the original Gondolin VM approach.
 
-Your working directory is mounted read-write at `/workspace` inside the VM. The LLM sees `/workspace` as its working directory. Commands that could harm your host system run in an isolated environment — network access, filesystem, and processes are all contained.
+OMP-Pi-Gondolin runs OMP's tool calls (`bash`, `read`, `write`, `edit`, and `user_bash`) inside a [Gondolin](https://github.com/earendil-works/gondolin) micro-VM instead of directly on the host. The working directory is mounted read-write at `/workspace` inside the VM.
+
+## Experimental warning
+
+This plugin is **experimental** and is **not compatible with an official stock Bun release yet**.
+
+The verified compatibility path currently requires a locally source-built Bun from Bun PR [#39652](https://github.com/oven-sh/bun/pull/39652), source commit:
+
+```text
+1b93209a8a3ebead9ad8c56164d4358fc493a989
+```
+
+Stock Bun 1.4.0 aborts while importing Gondolin's `ssh2` dependency:
+
+```text
+unsupported uv function: uv_version_string
+```
+
+Do not work around this limitation with a network bypass, unsandboxed fallback, or weakened containment. Work to reduce or eliminate the Node.js/native dependency incompatibilities is underway. The current plan is to investigate a Bun-compatible Gondolin dependency path first; if that is not viable, a Node.js helper-process boundary or an alternative SSH implementation may be evaluated. The legacy Pi compatibility shim remains in place until an alternative implementation is created and proven.
+
+Bun PR #39652 is **not an official Bun release**. This plugin must remain classified as experimental until equivalent compatibility is included in an official Bun release or the dependency path is independently made Bun-compatible.
 
 ## Requirements
 
-- [pi coding agent](https://github.com/badlogic/pi-mono) (`npx @mariozechner/pi-coding-agent`)
+- OMP 18.x
+- A source-built Bun from Bun PR #39652 for the current verified path
 - QEMU:
   - macOS: `brew install qemu`
   - Linux (x86_64): `sudo apt install qemu-system-x86`
   - Linux (aarch64): `sudo apt install qemu-system-arm`
-- Node.js 23.6+ (required by Gondolin 0.12.0 for Node-based tooling)
+- Gondolin 0.12.0 requires Node.js 23.6+ for its Node-based tooling and package engine requirements. OMP itself continues to run under Bun.
+
+The verified Linux tests use QEMU TCG/software emulation; `/dev/kvm` is optional and is not required for the tested path.
 
 ## Install with OMP
 
-The plugin uses the latest official Gondolin release, `0.12.0`, which depends on `ssh2 ^1.17.0`.
+### Public Git installation — no package token required
 
-Stock Bun 1.4.0 still aborts while importing `ssh2` with `unsupported uv function: uv_version_string`. The OMP plugin has been verified with a locally source-built Bun from Bun PR #39652 (`1b93209a8a3ebead9ad8c56164d4358fc493a989`): plugin import and registration, Gondolin VM startup, contained `read`/`write`/`edit`/`bash` and `user_bash` execution, host-workspace synchronization, outside-workspace denial, host-path invisibility, and shutdown all pass under QEMU TCG. This is an experimental compatibility baseline, not an official Bun release.
+The public GitHub repository is the canonical no-token installation path:
 
-Do not work around the stock-Bun blocker with a network bypass, unsandboxed fallback, or containment weakening. For normal Bun release support, track the upstream POSIX libuv compatibility work: [oven-sh/bun#18546](https://github.com/oven-sh/bun/issues/18546).
+```bash
+omp plugin install git+https://github.com/luluthehungrycat/omp-pi-gondolin.git#main
+omp plugin doctor
+```
 
-Configure GitHub Packages authentication:
+For an SSH-based Git setup:
+
+```bash
+omp plugin install git+ssh://git@github.com/luluthehungrycat/omp-pi-gondolin.git#main
+```
+
+### Optional GitHub Packages installation
+
+GitHub Packages is optional. It is not required for public Git installation.
 
 ```bash
 npm config set @luluthehungrycat:registry https://npm.pkg.github.com
 npm config set //npm.pkg.github.com/:_authToken "$GITHUB_TOKEN"
-```
-
-Then install through OMP:
-
-```bash
 omp plugin install @luluthehungrycat/omp-pi-gondolin
 omp plugin doctor
 ```
 
-Direct GitHub source installation is also supported:
+Never commit or print the token used for GitHub Packages authentication.
+
+### Local development checkout
+
+To test a local checkout without publishing it:
 
 ```bash
-omp plugin install git+ssh://git@github.com/luluthehungrycat/omp-pi-gondolin.git#v0.1.0
+omp plugin link /path/to/omp-pi-gondolin
+omp plugin doctor
 ```
+
+## Running OMP with the local PR-39652 Bun build
+
+OMP's launcher resolves `bun` through `PATH`, so the Bun runtime can be selected per invocation without replacing the global Bun installation.
+
+If the source checkout was built in place and its debug binary is relocatable, create a user-local command name and launch OMP with a temporary PATH override:
+
+```bash
+mkdir -p ~/.local/omp-bun-39652/bin
+ln -sf /path/to/bun-pr-39652-source/build/debug/bun-debug \
+  ~/.local/omp-bun-39652/bin/bun
+
+PATH="$HOME/.local/omp-bun-39652/bin:$PATH" omp
+```
+
+Use an isolated OMP profile while testing:
+
+```bash
+PATH="$HOME/.local/omp-bun-39652/bin:$PATH" \
+  omp --profile gondolin-experimental
+```
+
+Build the Bun checkout from its own source directory before creating the link:
+
+```bash
+cd /path/to/bun-pr-39652-source
+bun bd --version
+```
+
+The build requires the toolchain documented by Bun, including the required Clang version for the checkout.
+
+### Relocated debug-build workaround on Linux
+
+Some debug binaries are built with an absolute dynamic-module path such as `/root/bun`. If the binary reports that it cannot load bundled `node:*` modules from its original build path, rebuild it in the current checkout. If rebuilding is temporarily unavailable, a user-local `bwrap` shim can map the embedded path without modifying `/root` or installing Bun globally:
+
+```bash
+mkdir -p ~/.local/omp-bun-39652/bin
+cat > ~/.local/omp-bun-39652/bin/bun <<'SH'
+#!/bin/sh
+set -eu
+exec bwrap \
+  --ro-bind / / \
+  --tmpfs /root \
+  --dir /root/bun \
+  --ro-bind "$HOME/bun-pr-39652-source" /root/bun \
+  --bind "$HOME" "$HOME" \
+  --dev-bind /dev /dev \
+  --proc /proc \
+  --setenv HOME "$HOME" \
+  --chdir "$PWD" \
+  /root/bun/build/debug/bun-debug "$@"
+SH
+chmod +x ~/.local/omp-bun-39652/bin/bun
+
+PATH="$HOME/.local/omp-bun-39652/bin:$PATH" omp --profile gondolin-experimental
+```
+
+This workaround is Linux-specific and requires `bubblewrap`. A clean in-place Bun rebuild is preferred.
 
 ## Usage
 
-Load the extension explicitly when starting pi:
+After installation or linking, start OMP from the project directory you want to protect:
 
-```sh
+```bash
 cd /your/project
-pi -e /path/to/pi-gondolin/index.ts
+PATH="$HOME/.local/omp-bun-39652/bin:$PATH" omp \
+  --profile gondolin-experimental
 ```
 
-Or register it permanently in `~/.pi/agent/settings.json` (project-specific or global):
+For an explicit local extension path:
 
-```json
-{
-  "extensions": ["/path/to/pi-gondolin"]
-}
+```bash
+cd /your/project
+PATH="$HOME/.local/omp-bun-39652/bin:$PATH" omp \
+  --profile gondolin-experimental \
+  --extension /path/to/omp-pi-gondolin/index.ts
 ```
 
-On first run, gondolin downloads a guest image (~200 MB) into `~/.cache/gondolin/`.
+On first run, Gondolin downloads its guest image into the configured Gondolin cache, usually under `~/.cache/gondolin/`.
 
 ## What it does
 
-- **Overrides `bash`** — commands run via `/bin/bash -lc` inside the VM
-- **Overrides `read`** — files are read from the VM's `/workspace` tree
-- **Overrides `write` / `edit`** — writes go into the VM, synced to the host mount
-- **Routes `!` commands** — user shell commands (`!ls`, `!!git diff`) also run in the VM
-- **Patches the system prompt** — tells the LLM its cwd is `/workspace`
-- **Lazy + eager start** — VM starts on `session_start`; any tool call also triggers it if needed
-- **Clean shutdown** — VM is closed when the pi session ends
+- **Routes `bash`** — commands run through `/bin/bash -lc` inside the VM.
+- **Routes `read`** — files are read from the VM's `/workspace` tree.
+- **Routes `write` and `edit`** — writes execute through the VM filesystem and synchronize through the mounted workspace.
+- **Routes `user_bash`** — explicit user shell commands remain inside the VM.
+- **Enforces workspace boundaries** — paths outside the mounted workspace are denied.
+- **Patches the system prompt** — the model is told that its working directory is `/workspace`.
+- **Starts and stops cleanly** — the VM starts on session startup or first tool use and closes with the OMP session.
 
 ## How it works
 
-Gondolin boots a lightweight QEMU micro-VM in under a second. The `RealFSProvider` mounts your local working directory into the VM via a FUSE-backed virtual filesystem, so reads and writes are bidirectional. All `exec` calls go through gondolin's `vm.exec()` API with streamed output piped back to pi's tool result renderer.
+Gondolin boots a lightweight QEMU micro-VM. Its `RealFSProvider` exposes the selected host workspace through a virtual filesystem, while `vm.exec()` runs commands in the guest. OMP-Pi-Gondolin adapts those VM operations to OMP 18's extension and tool interfaces.
 
-The wiring follows the pattern from the [gondolin wiring gist](https://gist.github.com/ggoodman/6c56e13ca097e0b89f7cf0f9214c8f30) and the [gondolin pi example](https://github.com/earendil-works/gondolin/blob/main/host/examples/pi-gondolin.ts), adapted as a standalone loadable pi extension.
+The port deliberately keeps the legacy Pi compatibility shim while the replacement dependency work is investigated. That shim will not be removed until a replacement path has passed equivalent registration, tool, lifecycle, and containment tests.
+
+## Verification status
+
+The strongest verified combination is:
+
+```text
+OMP: 18.0.4
+Gondolin: 0.12.0
+Bun: Bun PR #39652 source build
+Bun commit: 1b93209a8a3ebead9ad8c56164d4358fc493a989
+QEMU: TCG/software emulation
+```
+
+Verified gates include OMP extension registration, VM startup/shutdown, `read`/`write`/`edit`, `bash`, `user_bash`, workspace synchronization, outside-workspace denial, host-path invisibility, and adversarial containment probes.
 
 ## License
 
