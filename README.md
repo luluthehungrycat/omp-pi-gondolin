@@ -11,7 +11,7 @@ Your working directory is mounted read-write at `/workspace` inside the VM. The 
   - macOS: `brew install qemu`
   - Linux (x86_64): `sudo apt install qemu-system-x86`
   - Linux (aarch64): `sudo apt install qemu-system-arm`
-- Node.js 18+
+- Node.js 23.6+ (required by Gondolin 0.12.0 for Node-based tooling)
 
 ## Install with OMP
 
