@@ -17,7 +17,7 @@ Your working directory is mounted read-write at `/workspace` inside the VM. The 
 
 The plugin uses the latest official Gondolin release, `0.12.0`, which depends on `ssh2 ^1.17.0`.
 
-Stock Bun 1.4.0 still aborts while importing `ssh2` with `unsupported uv function: uv_version_string`. The OMP plugin has been verified with a locally source-built Bun from Bun PR #39652 (`1b93209a8a3ebead9ad8c56164d4358fc493a989`): plugin import and registration, Gondolin VM startup, contained `bash` execution, and shutdown all pass under QEMU TCG. This is an experimental compatibility baseline, not an official Bun release.
+Stock Bun 1.4.0 still aborts while importing `ssh2` with `unsupported uv function: uv_version_string`. The OMP plugin has been verified with a locally source-built Bun from Bun PR #39652 (`1b93209a8a3ebead9ad8c56164d4358fc493a989`): plugin import and registration, Gondolin VM startup, contained `read`/`write`/`edit`/`bash` and `user_bash` execution, host-workspace synchronization, outside-workspace denial, host-path invisibility, and shutdown all pass under QEMU TCG. This is an experimental compatibility baseline, not an official Bun release.
 
 Do not work around the stock-Bun blocker with a network bypass, unsandboxed fallback, or containment weakening. For normal Bun release support, track the upstream POSIX libuv compatibility work: [oven-sh/bun#18546](https://github.com/oven-sh/bun/issues/18546).
 
