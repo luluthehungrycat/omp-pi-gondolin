@@ -46,7 +46,7 @@ function shQuote(value: string): string {
 }
 
 function toGuestPath(localCwd: string, localPath: string): string {
-  const rel = path.relative(localCwd, localPath);
+  const rel = path.relative(localCwd, path.resolve(localCwd, localPath));
   if (rel === "") return GUEST_WORKSPACE;
   if (rel.startsWith("..") || path.isAbsolute(rel)) {
     throw new Error(`path escapes workspace: ${localPath}`);
@@ -133,6 +133,50 @@ function sanitizeEnv(env?: NodeJS.ProcessEnv): Record<string, string> | undefine
     if (typeof v === "string") out[k] = v;
   }
   return out;
+}
+
+function toolResult(text: string) {
+  return { content: [{ type: "text" as const, text }] };
+}
+
+async function executeGondolinRead(vm: VM, localCwd: string, params: any) {
+  const localPath = path.resolve(localCwd, String(params?.path ?? ""));
+  const content = (await createGondolinReadOps(vm, localCwd).readFile(localPath)).toString();
+  const lines = content.split("\n");
+  const start = Math.max(1, Math.floor(Number(params?.offset) || 1));
+  const limit = Number(params?.limit);
+  const selected = lines.slice(
+    start - 1,
+    Number.isFinite(limit) && limit > 0 ? start - 1 + Math.floor(limit) : undefined,
+  );
+  return toolResult(selected.join("\n"));
+}
+
+async function executeGondolinWrite(vm: VM, localCwd: string, params: any) {
+  const localPath = path.resolve(localCwd, String(params?.path ?? ""));
+  await createGondolinWriteOps(vm, localCwd).writeFile(localPath, String(params?.content ?? ""));
+  return toolResult(`Wrote ${localPath}`);
+}
+
+async function executeGondolinEdit(vm: VM, localCwd: string, params: any) {
+  const localPath = path.resolve(localCwd, String(params?.path ?? ""));
+  const edits = Array.isArray(params?.edits)
+    ? params.edits
+    : [{ oldText: params?.oldText, newText: params?.newText }];
+  const ops = createGondolinEditOps(vm, localCwd);
+  let content = (await ops.readFile(localPath)).toString();
+  for (const edit of edits) {
+    if (typeof edit?.oldText !== "string" || typeof edit?.newText !== "string") {
+      throw new Error("edit requires oldText and newText");
+    }
+    const first = content.indexOf(edit.oldText);
+    if (first < 0 || first !== content.lastIndexOf(edit.oldText)) {
+      throw new Error("edit oldText must match exactly once");
+    }
+    content = content.slice(0, first) + edit.newText + content.slice(first + edit.oldText.length);
+  }
+  await ops.writeFile(localPath, content);
+  return toolResult(`Edited ${localPath}`);
 }
 
 function createGondolinBashOps(vm: VM, localCwd: string): BashOperations {
@@ -260,9 +304,7 @@ export default function (pi: ExtensionAPI) {
     ...localRead,
     async execute(id, params, signal, onUpdate, ctx) {
       const activeVm = await ensureVm(ctx);
-      return createReadTool(localCwd, {
-        operations: createGondolinReadOps(activeVm, localCwd),
-      }).execute(id, params, signal, onUpdate);
+      return executeGondolinRead(activeVm, localCwd, params);
     },
   });
 
@@ -270,9 +312,7 @@ export default function (pi: ExtensionAPI) {
     ...localWrite,
     async execute(id, params, signal, onUpdate, ctx) {
       const activeVm = await ensureVm(ctx);
-      return createWriteTool(localCwd, {
-        operations: createGondolinWriteOps(activeVm, localCwd),
-      }).execute(id, params, signal, onUpdate);
+      return executeGondolinWrite(activeVm, localCwd, params);
     },
   });
 
@@ -280,9 +320,7 @@ export default function (pi: ExtensionAPI) {
     ...localEdit,
     async execute(id, params, signal, onUpdate, ctx) {
       const activeVm = await ensureVm(ctx);
-      return createEditTool(localCwd, {
-        operations: createGondolinEditOps(activeVm, localCwd),
-      }).execute(id, params, signal, onUpdate);
+      return executeGondolinEdit(activeVm, localCwd, params);
     },
   });
 

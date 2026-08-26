@@ -1,0 +1,37 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'omp-port/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.0'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check TypeScript syntax
+        run: |
+          bun -e 'const source = await Bun.file("index.ts").text(); new Bun.Transpiler({ loader: "tsx" }).transformSync(source);'
+
+      - name: Validate package metadata
+        run: |
+          bun -e 'const p = await Bun.file("package.json").json(); if (p.dependencies["@earendil-works/gondolin"] !== "0.12.0") throw new Error("unexpected Gondolin version"); if (p.omp.extensions[0] !== "./index.ts") throw new Error("unexpected OMP extension metadata");'
+
+      - name: Check whitespace
+        run: git diff --check
