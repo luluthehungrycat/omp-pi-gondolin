@@ -1,0 +1,42 @@
+diff --git a/lib/protocol/constants.js b/lib/protocol/constants.js
+index ad7759257d6bdbcafa353dec8946258d64c14eb0..139d11b5a889ed59de25e4082d63c05e00c3a4fe 100644
+--- a/lib/protocol/constants.js
++++ b/lib/protocol/constants.js
+@@ -3,9 +3,11 @@
+ const crypto = require('crypto');
+ 
+ let cpuInfo;
+-try {
+-  cpuInfo = require('cpu-features')();
+-} catch {}
++if (!process.versions.bun) {
++  try {
++    cpuInfo = require('cpu-features')();
++  } catch {}
++}
+ 
+ const { bindingAvailable, CIPHER_INFO, MAC_INFO } = require('./crypto.js');
+ 
+diff --git a/lib/protocol/crypto.js b/lib/protocol/crypto.js
+index 851cc73817537c1eace3442c792bc1e5e5289cd2..a6a7ac9b6a2753b14498c881139baaf3561c9b3d 100644
+--- a/lib/protocol/crypto.js
++++ b/lib/protocol/crypto.js
+@@ -26,11 +26,13 @@ let GenericCipher;
+ let AESGCMDecipher;
+ let ChaChaPolyDecipher;
+ let GenericDecipher;
+-try {
+-  binding = require('./crypto/build/Release/sshcrypto.node');
+-  ({ AESGCMCipher, ChaChaPolyCipher, GenericCipher,
+-     AESGCMDecipher, ChaChaPolyDecipher, GenericDecipher } = binding);
+-} catch {}
++if (!process.versions.bun) {
++  try {
++    binding = require('./crypto/build/Release/sshcrypto.node');
++    ({ AESGCMCipher, ChaChaPolyCipher, GenericCipher,
++       AESGCMDecipher, ChaChaPolyDecipher, GenericDecipher } = binding);
++  } catch {}
++}
+ 
+ const CIPHER_STREAM = 1 << 0;
+ const CIPHER_INFO = (() => {
