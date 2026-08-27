@@ -36,41 +36,36 @@ The verified Linux tests use QEMU TCG/software emulation; `/dev/kvm` is optional
 
 ## Install with OMP
 
-### Public Git installation — no package token required
+### Verified checkout/link workflow
 
-The public GitHub repository is the canonical no-token installation path:
+The tracked `ssh2` patch is applied when Bun installs the plugin checkout itself. Use a local checkout and link that directory into OMP:
 
 ```bash
+git clone https://github.com/luluthehungrycat/omp-pi-gondolin.git
+cd omp-pi-gondolin
+bun install --frozen-lockfile
+omp plugin link "$PWD"
+omp plugin doctor
+```
+
+For an isolated OMP profile:
+
+```bash
+omp --profile gondolin-link-test plugin link "$PWD"
+omp --profile gondolin-link-test plugin doctor
+```
+
+The linked plugin uses this checkout's own `node_modules/ssh2`; do not delete the checkout's `node_modules` after linking.
+
+### Direct `omp plugin install` status
+
+Direct Git or package installation is **not currently supported for this patch-based build**. OMP installs plugins as dependencies of a shared plugin manifest, while Bun applies `patchedDependencies` only from the root manifest. The plugin-manager enhancement needed to provide safe per-plugin patch application is being developed separately.
+
+Do not use these commands for this version until that feature is available:
+
+```text
 omp plugin install git+https://github.com/luluthehungrycat/omp-pi-gondolin.git#main
-omp plugin doctor
-```
-
-For an SSH-based Git setup:
-
-```bash
-omp plugin install git+ssh://git@github.com/luluthehungrycat/omp-pi-gondolin.git#main
-```
-
-### Optional GitHub Packages installation
-
-GitHub Packages is optional. It is not required for public Git installation.
-
-```bash
-npm config set @luluthehungrycat:registry https://npm.pkg.github.com
-npm config set //npm.pkg.github.com/:_authToken "$GITHUB_TOKEN"
 omp plugin install @luluthehungrycat/omp-pi-gondolin
-omp plugin doctor
-```
-
-Never commit or print the token used for GitHub Packages authentication.
-
-### Local development checkout
-
-To test a local checkout without publishing it:
-
-```bash
-omp plugin link /path/to/omp-pi-gondolin
-omp plugin doctor
 ```
 
 ## Optional independent PR-39652 Bun baseline
@@ -133,12 +128,18 @@ This workaround is Linux-specific and requires `bubblewrap`. A clean in-place Bu
 
 ## Usage
 
-After installation or linking, start OMP from the project directory you want to protect:
+After installation or linking, start OMP from the project directory you want to protect. If you used the isolated-profile example above, keep using that profile; otherwise the default profile is used:
 
 ```bash
 cd /your/project
-PATH="$HOME/.local/omp-bun-39652/bin:$PATH" omp \
-  --profile gondolin-experimental
+omp
+```
+
+For the isolated profile:
+
+```bash
+cd /your/project
+omp --profile gondolin-link-test
 ```
 
 For an explicit local extension path:
