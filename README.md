@@ -128,7 +128,14 @@ This workaround is Linux-specific and requires `bubblewrap`. A clean in-place Bu
 
 ## Usage
 
-After installation or linking, start OMP from the project directory you want to protect:
+After installation or linking, start OMP from the project directory you want to protect. If you used the isolated-profile example above, keep using that profile; otherwise the default profile is used:
+
+```bash
+cd /your/project
+omp
+```
+
+For the isolated profile:
 
 ```bash
 cd /your/project
